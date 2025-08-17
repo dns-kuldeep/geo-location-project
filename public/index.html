@@ -12,12 +12,20 @@
         margin: 0;
       }
       #map {
-        height: 100vh;
+        height: 90vh;
         width: 100%;
+      }
+      #worker-count {
+        padding: 10px;
+        font-size: 18px;
+        font-weight: bold;
+        background: #f4f4f4;
+        border-bottom: 1px solid #ccc;
       }
     </style>
   </head>
   <body>
+    <div id="worker-count">Workers Online: 0</div>
     <div id="map"></div>
 
     <!-- Leaflet JS -->
@@ -35,31 +43,71 @@
       // Store worker markers
       const markers = {};
 
+      // Different colors for markers
+      const colors = [
+        "red",
+        "blue",
+        "green",
+        "orange",
+        "purple",
+        "darkred",
+        "cadetblue",
+      ];
+      const workerColors = {}; // Assign each worker a color
+
       // Function to fetch worker locations
       async function fetchLocations() {
         try {
           const res = await fetch("/api/all-locations");
           const data = await res.json();
 
+          const workerIds = Object.keys(data);
+
+          // ✅ Update worker count
+          document.getElementById("worker-count").innerText =
+            "Workers Online: " + workerIds.length;
+
           // Loop through workers
-          for (const workerId in data) {
+          workerIds.forEach((workerId, index) => {
             const { lat, lng, timestamp } = data[workerId];
+
+            // Assign a color if not already assigned
+            if (!workerColors[workerId]) {
+              workerColors[workerId] = colors[index % colors.length];
+            }
+
+            const customIcon = L.icon({
+              iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${workerColors[workerId]}.png`,
+              iconSize: [25, 41],
+              iconAnchor: [12, 41],
+              popupAnchor: [1, -34],
+              shadowUrl:
+                "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+              shadowSize: [41, 41],
+            });
 
             // If marker exists, update it
             if (markers[workerId]) {
               markers[workerId].setLatLng([lat, lng]);
+              markers[workerId].setIcon(customIcon);
               markers[workerId].bindPopup(
-                `<b>${workerId}</b><br>${lat}, ${lng}<br>${timestamp}`
+                `<b>Worker ID:</b> ${workerId}<br>
+                 <b>Lat:</b> ${lat}<br>
+                 <b>Lng:</b> ${lng}<br>
+                 <b>Last Update:</b> ${timestamp}`
               );
             } else {
               // Create new marker
-              markers[workerId] = L.marker([lat, lng])
+              markers[workerId] = L.marker([lat, lng], { icon: customIcon })
                 .addTo(map)
                 .bindPopup(
-                  `<b>${workerId}</b><br>${lat}, ${lng}<br>${timestamp}`
+                  `<b>Worker ID:</b> ${workerId}<br>
+                   <b>Lat:</b> ${lat}<br>
+                   <b>Lng:</b> ${lng}<br>
+                   <b>Last Update:</b> ${timestamp}`
                 );
             }
-          }
+          });
         } catch (err) {
           console.error("Error fetching locations:", err);
         }

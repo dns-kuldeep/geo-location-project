@@ -1,36 +1,38 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const path = require("path");
+const { v4: uuidv4 } = require("uuid"); // for unique IDs
 
 const app = express();
 app.use(bodyParser.json());
 
-// ✅ Serve static files (frontend)
+// ✅ serve static files from "public" folder
 app.use(express.static(path.join(__dirname, "public")));
 
-let workerLocations = {}; // Stores latest location per worker
+let workerLocations = {}; // stores all workers
 
-// ✅ Save worker location
+// ✅ Receive worker location
 app.post("/api/worker-location", (req, res) => {
-  const { workerId, lat, lng, timestamp } = req.body;
+  let { workerId, lat, lng, timestamp } = req.body;
 
-  // Store the latest location
+  // If no workerId provided, generate one
+  if (!workerId) {
+    workerId = uuidv4();
+    console.log(`Generated workerId for new device: ${workerId}`);
+  }
+
+  // Save/Update worker location
   workerLocations[workerId] = { lat, lng, timestamp };
 
   console.log(`Worker ${workerId}: ${lat}, ${lng}`);
-  res.send({ status: "ok" });
+  res.send({ status: "ok", workerId });
 });
 
-// ✅ Fetch all worker locations
+// ✅ Return all workers' latest locations
 app.get("/api/all-locations", (req, res) => {
   res.json(workerLocations);
 });
 
-// ✅ Root route
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// ✅ Use Render’s PORT or local
+// ✅ Start server (Render uses process.env.PORT)
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
