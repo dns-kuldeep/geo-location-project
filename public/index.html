@@ -1,121 +1,84 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
     <title>Worker Tracking Map</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
-      body {
-        margin: 0;
-      }
-      #map {
-        height: 90vh;
-        width: 100%;
-      }
-      #worker-count {
-        padding: 10px;
-        font-size: 18px;
+      #deviceInfo {
+        margin: 10px 0;
         font-weight: bold;
-        background: #f4f4f4;
-        border-bottom: 1px solid #ccc;
+        font-size: 16px;
+        color: green;
+      }
+      #workerList {
+        margin: 5px 0 15px;
+        padding-left: 20px;
+        font-size: 14px;
+        color: #333;
       }
     </style>
   </head>
   <body>
-    <div id="worker-count">Workers Online: 0</div>
-    <div id="map"></div>
+    <a href="worker.html">worker page</a>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <h2>Live Worker Tracking</h2>
+    <div id="deviceInfo">Connected devices: 0</div>
+    <ul id="workerList"></ul>
+    <div id="map" style="height: 500px"></div>
+
     <script>
-      // Init map (default center India)
-      const map = L.map("map").setView([20.5937, 78.9629], 5);
-
-      // Add OpenStreetMap tiles
+      const map = L.map("map").setView([20.5937, 78.9629], 5); // India center
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "© OpenStreetMap",
+        maxZoom: 100,
       }).addTo(map);
 
-      // Store worker markers
-      const markers = {};
+      let markers = {};
 
-      // Different colors for markers
-      const colors = [
-        "red",
-        "blue",
-        "green",
-        "orange",
-        "purple",
-        "darkred",
-        "cadetblue",
-      ];
-      const workerColors = {}; // Assign each worker a color
-
-      // Function to fetch worker locations
       async function fetchLocations() {
         try {
           const res = await fetch("/api/all-locations");
           const data = await res.json();
 
+          // ✅ Count devices
           const workerIds = Object.keys(data);
+          const count = workerIds.length;
+          document.getElementById("deviceInfo").innerText =
+            "Connected devices: " + count;
 
-          // ✅ Update worker count
-          document.getElementById("worker-count").innerText =
-            "Workers Online: " + workerIds.length;
+          // ✅ Show worker IDs list
+          const workerList = document.getElementById("workerList");
+          workerList.innerHTML = ""; // clear old list
+          workerIds.forEach((id) => {
+            const li = document.createElement("li");
+            li.textContent = id;
+            workerList.appendChild(li);
+          });
 
-          // Loop through workers
-          workerIds.forEach((workerId, index) => {
-            const { lat, lng, timestamp } = data[workerId];
+          // ✅ Update map markers
+          for (const workerId in data) {
+            const { lat, lng } = data[workerId];
 
-            // Assign a color if not already assigned
-            if (!workerColors[workerId]) {
-              workerColors[workerId] = colors[index % colors.length];
-            }
-
-            const customIcon = L.icon({
-              iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${workerColors[workerId]}.png`,
-              iconSize: [25, 41],
-              iconAnchor: [12, 41],
-              popupAnchor: [1, -34],
-              shadowUrl:
-                "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-              shadowSize: [41, 41],
-            });
-
-            // If marker exists, update it
             if (markers[workerId]) {
               markers[workerId].setLatLng([lat, lng]);
-              markers[workerId].setIcon(customIcon);
-              markers[workerId].bindPopup(
-                `<b>Worker ID:</b> ${workerId}<br>
-                 <b>Lat:</b> ${lat}<br>
-                 <b>Lng:</b> ${lng}<br>
-                 <b>Last Update:</b> ${timestamp}`
-              );
+              console.log("marker moved", workerId, lat, lng);
             } else {
-              // Create new marker
-              markers[workerId] = L.marker([lat, lng], { icon: customIcon })
+              markers[workerId] = L.marker([lat, lng])
                 .addTo(map)
-                .bindPopup(
-                  `<b>Worker ID:</b> ${workerId}<br>
-                   <b>Lat:</b> ${lat}<br>
-                   <b>Lng:</b> ${lng}<br>
-                   <b>Last Update:</b> ${timestamp}`
-                );
+                .bindPopup(workerId);
+              console.log("new marker", workerId, lat, lng);
             }
-          });
+
+            // Auto-center on last worker location
+            map.setView([lat, lng], 15);
+          }
         } catch (err) {
           console.error("Error fetching locations:", err);
         }
       }
 
-      // Refresh every 5 sec
+      // refresh every 5 sec
       setInterval(fetchLocations, 5000);
-      fetchLocations();
     </script>
   </body>
 </html>
