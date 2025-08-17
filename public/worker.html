@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Worker GPS Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 10px;
+      }
+      #log {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 300px;
+        overflow-y: auto;
+        background: #f9f9f9;
+        margin-top: 15px;
+        font-size: 14px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>GPS Tracking Test</h2>
+    <button onclick="sendLocation()">Start Tracking</button>
+
+    <div id="log"></div>
+
+    <script>
+      function log(message) {
+        console.log(message);
+        const logDiv = document.getElementById("log");
+        logDiv.innerText += message + "\n";
+        logDiv.scrollTop = logDiv.scrollHeight; // auto scroll
+      }
+
+      function sendLocation() {
+        if (navigator.geolocation) {
+          log("⏳ Starting GPS tracking...");
+
+          navigator.geolocation.watchPosition(
+            (pos) => {
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              const acc = pos.coords.accuracy; // meters
+
+              log(`📍 Position: Lat=${lat}, Lng=${lng}, Accuracy=${acc}m`);
+
+              fetch("/api/worker-location", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  workerId: "WORKER_1",
+                  lat: lat,
+                  lng: lng,
+                  accuracy: acc,
+                  timestamp: new Date(),
+                }),
+              })
+                .then((res) => res.json())
+                .then((data) =>
+                  log("✅ Server response: " + JSON.stringify(data))
+                )
+                .catch((err) => log("❌ Fetch error: " + err));
+            },
+            (err) => {
+              log("⚠️ GPS error: " + err.message);
+            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
+          );
+        } else {
+          log("❌ Geolocation not supported on this device.");
+        }
+      }
+    </script>
+  </body>
+</html>
