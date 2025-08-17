@@ -6,6 +6,9 @@ const app = express();
 app.use(bodyParser.json());
 
 // Mock DB (replace with MongoDB/MySQL later)
+app.get("/", (req, res) => {
+  res.send("🚀 Geo Location Project backend is running on Render!");
+});
 
 // ✅ serve static files from "public" folder
 app.use(express.static(path.join(__dirname, "public")));
